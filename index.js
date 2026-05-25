@@ -12,6 +12,8 @@ const {
   Routes
 } = require('discord.js');
 
+const VERIFY_CHANNEL_ID = '1508238876404092938';
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
@@ -22,27 +24,23 @@ const commands = [
     .setDescription('Create verification panel')
     .addRoleOption(option =>
       option.setName('role')
-        .setDescription('Role users get when verified')
+        .setDescription('Role users get after verifying')
         .setRequired(true)
     )
-].map(cmd => cmd.toJSON());
+].map(c => c.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
-  try {
-    await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
-    );
-    console.log('Slash commands registered.');
-  } catch (err) {
-    console.error(err);
-  }
+  await rest.put(
+    Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+    { body: commands }
+  );
+  console.log('Slash commands registered.');
 })();
 
 client.once('ready', () => {
-  console.log(`${client.user.tag} is online!`);
+  console.log(`${client.user.tag} online`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -51,7 +49,7 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true });
 
       const role = interaction.options.getRole('role');
-      const channel = await interaction.guild.channels.fetch(interaction.channelId);
+      const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
 
       const embed = new EmbedBuilder()
         .setTitle('TTK 𝐕𝐄𝐑𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍✅ BOT')
@@ -64,11 +62,9 @@ client.on('interactionCreate', async interaction => {
         .setEmoji('✅')
         .setStyle(ButtonStyle.Success);
 
-      const row = new ActionRowBuilder().addComponents(button);
-
       await channel.send({
         embeds: [embed],
-        components: [row]
+        components: [new ActionRowBuilder().addComponents(button)]
       });
 
       await interaction.editReply('✅ Verification panel created.');
@@ -76,9 +72,7 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isButton() && interaction.customId.startsWith('verify_')) {
       const roleId = interaction.customId.replace('verify_', '');
-      const role = interaction.guild.roles.cache.get(roleId);
-
-      await interaction.member.roles.add(role);
+      await interaction.member.roles.add(roleId);
 
       await interaction.reply({
         content: '✅ You are now verified!',
@@ -87,15 +81,7 @@ client.on('interactionCreate', async interaction => {
     }
   } catch (err) {
     console.error(err);
-
-    if (interaction.deferred) {
-      await interaction.editReply('❌ Error. Check Railway logs.');
-    } else if (!interaction.replied) {
-      await interaction.reply({
-        content: '❌ Error. Check Railway logs.',
-        ephemeral: true
-      });
-    }
+    if (interaction.deferred) await interaction.editReply('❌ Error. Check Railway logs.');
   }
 });
 
