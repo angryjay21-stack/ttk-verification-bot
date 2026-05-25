@@ -9,12 +9,15 @@ const {
   ButtonStyle,
   SlashCommandBuilder,
   REST,
-  Routes
+  Routes,
+  PermissionsBitField,
 } = require('discord.js');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
+
+const VERIFY_CHANNEL_ID = "1508238876404092938";
 
 const commands = [
   new SlashCommandBuilder()
@@ -23,9 +26,9 @@ const commands = [
     .addRoleOption(option =>
       option
         .setName('role')
-        .setDescription('Verification role')
+        .setDescription('Role to give after verification')
         .setRequired(true)
-    )
+    ),
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -49,41 +52,44 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 })();
 
 client.once('ready', () => {
-  console.log(`${client.user.tag} online`);
+  console.log(`${client.user.tag} is online!`);
 });
 
 client.on('interactionCreate', async interaction => {
-
   if (interaction.isChatInputCommand()) {
-
     if (interaction.commandName === 'setupverify') {
-
-      await interaction.deferReply({ ephemeral: true });
 
       const role = interaction.options.getRole('role');
 
+      const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
+
+      if (!channel) {
+        return interaction.reply({
+          content: 'Verification channel not found.',
+          ephemeral: true,
+        });
+      }
+
       const embed = new EmbedBuilder()
-        .setTitle('TTK 𝐕𝐄𝐑𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍✅ BOT')
-        .setDescription('Please Verify To Get Access To TTK RZ')
-        .setColor('#8000ff')
-        .setImage('attachment://TTKRZ_LOGO.png');
+        .setTitle('TTK VERIFICATION ✅')
+        .setDescription('Click the button below to verify.')
+        .setColor('#00ff88');
 
       const button = new ButtonBuilder()
         .setCustomId(`verify_${role.id}`)
         .setLabel('Verify')
-        .setEmoji('✅')
         .setStyle(ButtonStyle.Success);
 
       const row = new ActionRowBuilder().addComponents(button);
 
-      await interaction.channel.send({
+      await channel.send({
         embeds: [embed],
         components: [row],
-        files: ['./TTKRZ_LOGO.png']
       });
 
-      await interaction.editReply({
-        content: '✅ Verification panel created.'
+      await interaction.reply({
+        content: 'Verification panel sent.',
+        ephemeral: true,
       });
     }
   }
@@ -99,26 +105,24 @@ client.on('interactionCreate', async interaction => {
       if (!role) {
         return interaction.reply({
           content: 'Role not found.',
-          ephemeral: true
+          ephemeral: true,
         });
       }
 
       try {
-
         await interaction.member.roles.add(role);
 
         await interaction.reply({
-          content: `✅ Verified successfully!`,
-          ephemeral: true
+          content: `You are now verified with ${role.name}!`,
+          ephemeral: true,
         });
 
       } catch (err) {
-
         console.error(err);
 
         await interaction.reply({
-          content: '❌ Bot cannot give role. Move bot role above verified role.',
-          ephemeral: true
+          content: 'Bot cannot assign that role. Move my role above it.',
+          ephemeral: true,
         });
       }
     }
