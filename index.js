@@ -9,45 +9,35 @@ const {
   ButtonStyle,
   SlashCommandBuilder,
   REST,
-  Routes,
-  PermissionsBitField,
+  Routes
 } = require('discord.js');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
-
-const VERIFY_CHANNEL_ID = "1508238876404092938";
 
 const commands = [
   new SlashCommandBuilder()
     .setName('setupverify')
     .setDescription('Create verification panel')
     .addRoleOption(option =>
-      option
-        .setName('role')
-        .setDescription('Role to give after verification')
+      option.setName('role')
+        .setDescription('Role users get when verified')
         .setRequired(true)
-    ),
-].map(command => command.toJSON());
+    )
+].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log('Registering slash commands...');
-
     await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.CLIENT_ID,
-        process.env.GUILD_ID
-      ),
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
     );
-
     console.log('Slash commands registered.');
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
   }
 })();
 
@@ -56,75 +46,55 @@ client.once('ready', () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === 'setupverify') {
+  try {
+    if (interaction.isChatInputCommand() && interaction.commandName === 'setupverify') {
+      await interaction.deferReply({ ephemeral: true });
 
       const role = interaction.options.getRole('role');
-
-      const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
-
-      if (!channel) {
-        return interaction.reply({
-          content: 'Verification channel not found.',
-          ephemeral: true,
-        });
-      }
+      const channel = await interaction.guild.channels.fetch(interaction.channelId);
 
       const embed = new EmbedBuilder()
-        .setTitle('TTK VERIFICATION ✅')
-        .setDescription('Click the button below to verify.')
-        .setColor('#00ff88');
+        .setTitle('TTK 𝐕𝐄𝐑𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍✅ BOT')
+        .setDescription('Please Verify To Get Access To TTK RZ')
+        .setColor('#8000ff');
 
       const button = new ButtonBuilder()
         .setCustomId(`verify_${role.id}`)
         .setLabel('Verify')
+        .setEmoji('✅')
         .setStyle(ButtonStyle.Success);
 
       const row = new ActionRowBuilder().addComponents(button);
 
       await channel.send({
         embeds: [embed],
-        components: [row],
+        components: [row]
       });
 
-      await interaction.reply({
-        content: 'Verification panel sent.',
-        ephemeral: true,
-      });
+      await interaction.editReply('✅ Verification panel created.');
     }
-  }
 
-  if (interaction.isButton()) {
-
-    if (interaction.customId.startsWith('verify_')) {
-
-      const roleId = interaction.customId.split('_')[1];
-
+    if (interaction.isButton() && interaction.customId.startsWith('verify_')) {
+      const roleId = interaction.customId.replace('verify_', '');
       const role = interaction.guild.roles.cache.get(roleId);
 
-      if (!role) {
-        return interaction.reply({
-          content: 'Role not found.',
-          ephemeral: true,
-        });
-      }
+      await interaction.member.roles.add(role);
 
-      try {
-        await interaction.member.roles.add(role);
+      await interaction.reply({
+        content: '✅ You are now verified!',
+        ephemeral: true
+      });
+    }
+  } catch (err) {
+    console.error(err);
 
-        await interaction.reply({
-          content: `You are now verified with ${role.name}!`,
-          ephemeral: true,
-        });
-
-      } catch (err) {
-        console.error(err);
-
-        await interaction.reply({
-          content: 'Bot cannot assign that role. Move my role above it.',
-          ephemeral: true,
-        });
-      }
+    if (interaction.deferred) {
+      await interaction.editReply('❌ Error. Check Railway logs.');
+    } else if (!interaction.replied) {
+      await interaction.reply({
+        content: '❌ Error. Check Railway logs.',
+        ephemeral: true
+      });
     }
   }
 });
