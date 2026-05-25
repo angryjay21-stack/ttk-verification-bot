@@ -12,8 +12,6 @@ const {
   Routes
 } = require('discord.js');
 
-const VERIFY_CHANNEL_ID = '1508238876404092938';
-
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
@@ -49,7 +47,6 @@ client.on('interactionCreate', async interaction => {
       await interaction.deferReply({ ephemeral: true });
 
       const role = interaction.options.getRole('role');
-      const channel = await client.channels.fetch(VERIFY_CHANNEL_ID);
 
       const embed = new EmbedBuilder()
         .setTitle('TTK 𝐕𝐄𝐑𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍✅ BOT')
@@ -62,7 +59,7 @@ client.on('interactionCreate', async interaction => {
         .setEmoji('✅')
         .setStyle(ButtonStyle.Success);
 
-      await channel.send({
+      await interaction.channel.send({
         embeds: [embed],
         components: [new ActionRowBuilder().addComponents(button)]
       });
